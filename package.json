@@ -1,0 +1,17 @@
+{
+  "name": "bilibili-live-m3u-worker",
+  "scripts": {
+    "dev": "bun run --hot src/index.ts",
+    "start": "bun run src/index.ts"
+  },
+  "dependencies": {
+    "@distube/ytdl-core": "^4.15.1",
+    "async-lock": "^1.4.1",
+    "hono": "^4.6.8",
+    "install": "^0.13.0",
+    "ioredis": "^5.4.1"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}
