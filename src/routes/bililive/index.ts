@@ -1,6 +1,10 @@
 import { Hono } from 'hono';
 import redis from "../../module/redis";
 
+import dotenv = require('dotenv');
+
+dotenv.config();
+
 const app = new Hono();
 
 const fetchBiliLiveRoomPlayUrl = async (cid: string) => {

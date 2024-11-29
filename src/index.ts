@@ -1,15 +1,22 @@
+import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import redis from "./module/redis";
 import { logger } from './middleware/logger';
 import { getConnInfo } from 'hono/bun';
+import dotenv = require('dotenv');
+
+dotenv.config();
 
 import bililive from "./routes/bililive";
+import ytlive from "./routes/ytlive";
 
 const app = new Hono();
 
 app.use(logger());
 
 app.route('', bililive);
+
+app.route('', ytlive);
 
 const _subInfo = [
   {
@@ -166,6 +173,11 @@ app.get('/meta/live/bili/user_avatar/:cacheImageId', async (c) => {
   await redis.set(`bili:user_avatar:${cacheImageId}:cache`, bufferDataUrl);
   await redis.expire(`bili:user_avatar:${cacheImageId}:cache`, 60 * 60 * 72);
   return c.body(buffer);
+});
+
+serve({
+    port: Number(process.env.PORT) || 10028,
+    fetch: app.fetch,
 });
 
 export default {

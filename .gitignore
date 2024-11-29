@@ -98,3 +98,5 @@ dist
 .pnp.*
 .idea/
 .DS_Store
+tmp/
+cookies.json
