@@ -33,6 +33,7 @@ class RequestLock {
       if(!this.locked[key]) {
         this.locked[key] = true;
         resolve(true);
+        return;
       }
       const callback = () => {
         if(!this.locked[key]) {

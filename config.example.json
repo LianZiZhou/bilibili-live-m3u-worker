@@ -1,0 +1,25 @@
+{
+  "serviceUrl": "http://192.168.1.10:10028",
+  "port": 10028,
+  "redisUrl": "redis://localhost:6379",
+  "bilibili": {
+    "sessdata": ""
+  },
+  "youtube": {
+    "source": "local",
+    "dataApiKey": "",
+    "holodexApiKey": "",
+    "channels": [
+      { "id": "@lofigirl", "name": "Lofi Girl", "group": "Music" },
+      { "id": "UCdn5BQ06XqgXoAxIhbqw5Rg", "name": "白上フブキ", "group": "Hololive" }
+    ],
+    "holodexOrgs": [],
+    "statusCacheSeconds": 0,
+    "playback": "passthrough",
+    "quality": "1080",
+    "muxCodecs": ["avc1"],
+    "cookiesPath": "./cookies.json",
+    "proxy": "",
+    "placeholderImage": ""
+  }
+}

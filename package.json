@@ -2,20 +2,24 @@
   "name": "bilibili-live-m3u-worker",
   "scripts": {
     "dev": "bun run --hot src/index.ts",
-    "start": "bun run src/index.ts"
+    "start": "bun run src/index.ts",
+    "test": "bun test",
+    "typecheck": "tsc -p ."
   },
   "dependencies": {
-    "@distube/ytdl-core": "^4.15.1",
     "@hono/node-server": "^1.13.7",
     "async-lock": "^1.4.1",
     "dotenv": "^16.4.5",
-    "fluent-ffmpeg": "^2.1.3",
     "hono": "^4.6.8",
     "install": "^0.13.0",
-    "ioredis": "^5.4.1"
+    "ioredis": "^5.4.1",
+    "socks": "^2.8.10",
+    "undici": "^8.11.2",
+    "youtubei.js": "^18.1.0"
   },
   "devDependencies": {
-    "@types/bun": "latest",
-    "@types/fluent-ffmpeg": "^2.1.27"
+    "@types/bun": "^1.1.13",
+    "@types/node": "^26.6.3",
+    "typescript": "^7.0.2"
   }
 }

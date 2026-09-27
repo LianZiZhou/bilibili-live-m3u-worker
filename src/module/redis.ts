@@ -1,11 +1,7 @@
 import Redis from 'ioredis';
-import fs = require('fs');
+import config from '../config';
 
-import dotenv = require('dotenv');
-
-dotenv.config();
-
-const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+const redis = new Redis(config.redisUrl);
 
 redis.on('error', (err) => {
   console.log('Redis ' + err);
