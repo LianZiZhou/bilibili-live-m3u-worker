@@ -100,3 +100,4 @@ dist
 .DS_Store
 tmp/
 cookies.jsonconfig.json
+dump.rdb
