@@ -2,6 +2,14 @@
   "compilerOptions": {
     "strict": true,
     "jsx": "react-jsx",
-    "jsxImportSource": "hono/jsx"
-  }
+    "jsxImportSource": "hono/jsx",
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["bun"],
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["src", "test"]
 }

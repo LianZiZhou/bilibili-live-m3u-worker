@@ -99,4 +99,4 @@ dist
 .idea/
 .DS_Store
 tmp/
-cookies.json
+cookies.jsonconfig.json

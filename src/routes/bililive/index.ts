@@ -1,9 +1,9 @@
 import { Hono } from 'hono';
 import redis from "../../module/redis";
-
-import dotenv = require('dotenv');
-
-dotenv.config();
+import config from '../../config';
+import { fetchCachedImage, sendBinary } from '../../utils/binaryCache';
+import { renderM3U, renderXMLTV, type M3UEntry, type XMLTVChannel, type XMLTVProgramme } from '../../utils/playlist';
+import { getBaseUrl } from '../../utils/request';
 
 const app = new Hono();
 
@@ -57,7 +57,7 @@ const fetchXAPIBiliLiveRoomPlayUrl = async (cid: string) => {
   const response = await fetch(`https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo?room_id=${cid}&protocol=1&format=2&codec=0,1,2&qn=30000&platform=web&ptype=8&dolby=5&panorama=1&hdr_type=0,1`, {
     method: 'GET',
     headers: {
-      'Cookie': 'SESSDATA=' + process.env.BILI_SESSDATA
+      'Cookie': 'SESSDATA=' + config.bilibili.sessdata
     }
   });
   if(response.status !== 200) {
@@ -168,6 +168,134 @@ app.get('/play/live/bili/:cid/:media', async (c) => {
   }
   c.header('content-type', contentType);
   return c.body(buffer);
+});
+
+const defaultSubInfo = [
+  {
+    cid: 21756924,
+    name: '雪绘Yukie',
+    title: '雪绘Yukie直播间',
+  },{
+  cid: 6,
+  name: '哔哩哔哩英雄联盟赛事',
+  title: '哔哩哔哩英雄联盟赛事直播间',
+}];
+
+async function fetchBiliLiveRoomList() {
+  const cachedList = await redis.get('bili:live:room:list');
+  if(cachedList) {
+    return JSON.parse(cachedList);
+  }
+  const list = [];
+  for(let i = 1; i <= 10; i++) {
+    const res = await fetch(`https://api.live.bilibili.com/xlive/web-interface/v1/second/getList?platform=web&parent_area_id=9&area_id=0&sort_type=sort_type_291&page=${i}`);
+    const { code, data } = await res.json();
+    if(code !== 0) {
+      throw new Error(`Failed to fetch BiliBili live room list, code: ${code}`);
+    }
+    for (const room of data.list) {
+      await redis.set(`bili:user_avatar:${room.roomid}`, room.face);
+    }
+    list.push(...data.list);
+  }
+  await redis.set('bili:live:room:list', JSON.stringify(list));
+  await redis.expire('bili:live:room:list', 3600);
+  return list;
+}
+
+async function getSubInfo(): Promise<{ cid: number; name: string; title: string }[]> {
+  try {
+    return (await fetchBiliLiveRoomList()).map((room: { roomid: number; uname: string; title: string }) => ({
+      cid: room.roomid,
+      name: room.uname,
+      title: room.title,
+    }));
+  }
+  catch(e) {
+    console.error(e);
+    return defaultSubInfo;
+  }
+}
+
+export async function buildBiliM3UEntries(base: string): Promise<M3UEntry[]> {
+  return (await getSubInfo()).map((info) => ({
+    id: String(info.cid),
+    name: info.name,
+    logo: `${base}/meta/live/bili/cover/${info.cid}.jpg`,
+    group: 'Bilibili',
+    url: `${base}/play/live/bili/${info.cid}/index.m3u8`,
+  }));
+}
+
+export async function buildBiliGuide(base: string): Promise<{ channels: XMLTVChannel[]; programmes: XMLTVProgramme[] }> {
+  const subInfo = await getSubInfo();
+  return {
+    channels: subInfo.map((info) => ({
+      id: String(info.cid),
+      name: info.name,
+      icon: `${base}/meta/live/bili/user_avatar/${info.cid}.jpg`,
+      url: `https://live.bilibili.com/${info.cid}`,
+    })),
+    programmes: subInfo.map((info) => ({
+      channel: String(info.cid),
+      start: new Date('2024-01-01T00:00:00Z'),
+      stop: new Date('2077-01-01T00:00:00Z'),
+      title: info.title,
+      icon: `${base}/meta/live/bili/cover/${info.cid}.jpg`,
+      url: `https://live.bilibili.com/${info.cid}`,
+    })),
+  };
+}
+
+app.get('/subscribe/bili/live.m3u', async (c) => {
+  const base = getBaseUrl(c);
+  return c.text(renderM3U(await buildBiliM3UEntries(base), { 'url-logos': `${base}/meta/live/bili/cover/` }));
+});
+
+app.get('/subscribe/bili/guide.xml', async (c) => {
+  const { channels, programmes } = await buildBiliGuide(getBaseUrl(c));
+  return c.text(renderXMLTV(channels, programmes));
+});
+
+app.get('/meta/live/bili/cover/:cid', async (c) => {
+  const cid = c.req.param('cid').split('.')[0];
+  const cachedCoverUrl = await redis.get(`bili:${cid}:cover_url`);
+  let coverUrl = cachedCoverUrl;
+  if(!coverUrl) {
+    const response = await fetch(`https://api.live.bilibili.com/room/v1/Room/get_info?room_id=${cid}`);
+    if(response.status !== 200) {
+      c.status(404);
+      return c.text('Not Found');
+    }
+    const { code, data } = await response.json();
+    if(code !== 0 || !data?.user_cover) {
+      c.status(404);
+      return c.text('Not Found');
+    }
+    coverUrl = data.user_cover as string;
+    await redis.set(`bili:${cid}:cover_url`, coverUrl, 'EX', 3600);
+  }
+  const image = await fetchCachedImage(`bili:${cid}:cover:bin`, coverUrl, 3600);
+  if(!image) {
+    c.status(404);
+    return c.text('Not Found');
+  }
+  return sendBinary(c, image);
+});
+
+app.get('/meta/live/bili/user_avatar/:cacheImageId', async (c) => {
+  const cacheImageId = c.req.param('cacheImageId').split('.')[0];
+  const imageUrl = await redis.get(`bili:user_avatar:${cacheImageId}`);
+  if(!imageUrl) {
+    c.status(404);
+    return c.text('Not Found');
+  }
+  const image = await fetchCachedImage(`bili:user_avatar:${cacheImageId}:bin`, imageUrl, 60 * 60 * 72);
+  if(!image) {
+    c.status(404);
+    return c.text('Not Found');
+  }
+  return sendBinary(c, image);
 });
 
 export default app;
